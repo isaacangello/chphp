@@ -1,0 +1,328 @@
+#!/bin/bash
+
+
+cmdphp81="/usr/bin/php81"
+cmdphp82="/usr/bin/php82"
+cmdphp83="/usr/bin/php83"
+cmdphp84="/usr/bin/php84"
+cmdphp85="/usr/bin/php85"
+cmdphp81fpm="/usr/bin/php-fpm81"
+cmdphp82fpm="/usr/bin/php-fpm82"
+cmdphp83fpm="/usr/bin/php-fpm83"
+cmdphp84fpm="/usr/bin/php-fpm84"
+cmdphp85fpm="/usr/bin/php-fpm85"
+HERDLINK=$HOME"/.config/herd-lite/bin/php"
+tmpdir="./tmp"
+url=" https://php.new/install/linux/"
+user=$(whoami)
+local_info() {
+    local blue_bg="\033[44m"
+    local white_text="\033[97m"
+    local reset="\033[0m"
+    printf " ${blue_bg}${white_text} INFO ${reset} $1"
+}
+local_question() {
+    local blue_bg="\033[44m"
+    local white_text="\033[97m"
+    local reset="\033[0m"
+    printf " ${blue_bg}${white_text} question ? ${reset} $1"
+}
+local_help() {
+    local blue_bg="\033[44m"
+    local white_text="\033[97m"
+    local reset="\033[0m"
+    printf " ${blue_bg}${white_text} HELP ${reset} $1"
+}
+
+local_success() {
+    local green_bg="\033[42m"
+    local black_text="\033[30m"
+    local reset="\033[0m"
+    printf " ${green_bg}${black_text} SUCCESS ${reset} $1 \n"
+}
+
+local_error() {
+    local red_bg="\033[41m"
+    local white_text="\033[97m"
+    local reset="\033[0m"
+    printf " ${red_bg}${white_text} ERROR ${reset} $1 \n"
+}
+
+adjust_path(){
+
+local_info "Adjust path ... \n"
+# Detect the current shell
+CURRENT_SHELL=$(basename "$SHELL")
+
+# Determine profile files to update
+PROFILE_FILES=()
+
+case "$CURRENT_SHELL" in
+  bash)
+    PROFILE_FILES=("$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile")
+    ;;
+  zsh)
+    PROFILE_FILES=("$HOME/.zshrc" "$HOME/.zprofile" "$HOME/.profile")
+    ;;
+  *)
+    PROFILE_FILES=("$HOME/.profile")
+    error "Unknown shell. Defaulting to update ~/.profile."
+    ;;
+esac
+
+# Add the installation directory to the PATH if not already present
+PATH_UPDATED=false
+if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
+  info "Adding $INSTALL_DIR to your PATH... \n"
+  for PROFILE_FILE in "${PROFILE_FILES[@]}"; do
+    if [[ -f "$PROFILE_FILE" ]]; then
+      if ! grep -q "$INSTALL_DIR" "$PROFILE_FILE"; then
+        echo "export PATH=\"$INSTALL_DIR:\$PATH\"" >> "$PROFILE_FILE"
+        echo "export PHP_INI_SCAN_DIR=\"$INSTALL_DIR:\$PHP_INI_SCAN_DIR\"" >> "$PROFILE_FILE"
+        info "Added $INSTALL_DIR to PATH in $PROFILE_FILE \n"
+        PATH_UPDATED=true
+        break
+      fi
+    fi
+  done
+
+  if [ "$PATH_UPDATED" = false ]; then
+    error "Could not automatically update your PATH. Please add the following line to your shell profile:"
+    error "export PATH=\"$INSTALL_DIR:\$PATH\""
+  fi
+else
+  info "$INSTALL_DIR is already in your PATH. \n"
+fi    
+}
+
+change_link(){
+    local_success "Change php link in path \n"
+    if [ "$user" == "root" ] ; then    
+        rm -rf /usr/bin/php
+        ln  -sT  $1 /usr/bin/php 
+        else
+        sudo rm -rf /usr/bin/php
+        sudo ln  -sT  $1 /usr/bin/php 
+    fi
+
+}
+
+change_fpm_link(){
+    local_success "Change php-fpm link in path \n"
+    rm -rf /usr/bin/php-fpm
+    ln  -sT  $1 /usr/bin/php-fpm
+}
+
+download_with_spinner() {
+  local url=$1
+  local output_file=$2
+
+  # Start curl in the background, suppressing all output and errors
+  curl -L "$url" -o "$output_file" > /dev/null 2>&1 &
+
+
+  # Capture the PID of curl
+  local curl_pid=$!
+
+  # Show the spinner while curl is running
+  show_spinner $curl_pid
+
+  # Wait for curl to complete
+  wait $curl_pid
+
+  # Check if the download was successful
+  if [ $? -eq 0 ]; then
+    #success "File downloaded successfully to $output_file."
+    chmod +x "$output_file"
+  else
+    error "Failed to download file from $url."
+    exit 1
+  fi
+}
+BASE_URL="https://download.herdphp.com"
+declare -A php_urls=(
+    ["x86_64,8.3"]="$BASE_URL/herd-lite/linux/x64/php"        \
+    ["x86_64,8.4"]="$BASE_URL/herd-lite/linux/x64/8.4/php"    \
+    ["x86_64,8.5"]="$BASE_URL/herd-lite/linux/x64/8.5/php"    \
+    ["arm64,8.3"]="$BASE_URL/herd-lite/linux/arm64/php"       \ 
+    ["arm64,8.4"]="$BASE_URL/herd-lite/linux/arm64/8.4/php"   \
+    ["arm64,8.5"]="$BASE_URL/herd-lite/linux/arm64/8.5/php"   \
+        )\
+
+install_php(){
+local_info "Downloading PHP binary…  "
+if [ "$(uname -m)" = "x86_64" ]; then
+  download_with_spinner "${php_urls[x86_64,$1]}" "$PHP_BIN"
+else
+  download_with_spinner "${php_urls[arm64,$1]}" "$PHP_BIN"
+fi
+
+info "Downloading cacert.pem…  "
+download_with_spinner "https://curl.se/ca/cacert.pem" "$INSTALL_DIR/cacert.pem"
+
+if [ ! -f "$INSTALL_DIR/php.ini" ]; then
+  touch "$INSTALL_DIR/php.ini"
+
+  echo "curl.cainfo=$INSTALL_DIR/cacert.pem" >> "$INSTALL_DIR/php.ini"
+  echo "openssl.cafile=$INSTALL_DIR/cacert.pem" >> "$INSTALL_DIR/php.ini"
+  echo "pcre.jit=0" >> "$INSTALL_DIR/php.ini"
+fi
+
+
+}
+
+install_composer(){
+local_info "Downloading Composer binary…  "
+download_with_spinner "$BASE_URL/herd-lite/composer" "$COMPOSER_BIN"
+
+}
+
+install_laravel(){
+info "Downloading Laravel Installer…  "
+download_with_spinner "$BASE_URL/resources/laravel" "$LARAVEL_BIN"
+
+}
+
+install_herd(){
+    local_info "Downloading installer file...\n\n"
+    if [ -d $tmpdir ] ;  then
+    rm -Rf $tmpdir
+        mkdir $tmpdir
+        wget -O $tmpdir/install_herd_"$1".sh  $url$1/ @
+        else
+        mkdir $tmpdir
+        wget -O $tmpdir/install_herd_"$1".sh  $url$1/
+    fi
+    if [ -f $tmpdir/install_herd_source ] ; then rm -f $tmpdir/install_herd_source ; fi
+    sed -n '1,/clear/p' $tmpdir/install_herd_"$1".sh > $tmpdir/install_herd_source
+    sed -i 's/clear//g' $tmpdir/install_herd_source
+    if [ -f $tmpdir/install_herd_source ] ; then
+        #   local_info "Install PHP $1 \n\n"
+        source $tmpdir/install_herd_source
+          # shellcheck disable=SC1090
+          
+          install_php "$1" 
+          success "Great Job !!!! \n"
+          local_question " you wish install composer and laravel installer ?\n"
+          read resp
+          if [ "$resp" = "s" ] || [ "$resp" = "S" ] || [ "$resp" = "y" ] || [ "$resp" = "Y" ] ; then
+                install_composer
+                install_laravel
+          fi
+    else
+         local_error "
+            you have a problem !!!
+            file is not found.
+            bye :-(  
+         "
+        exit 1
+    fi
+
+}
+
+help_print(){
+    local_help "sintaxe/
+    -------
+        chphp  This script change a php version in path 
+        ______________________
+        php.version_|_option 
+        php(current)| null | -p  
+        php81_______| null | -p
+        php82_______| null | -p
+        php83_______| null | -p
+        php83_______| null | -p
+        php84_______| null | -p
+        php85_______| null | -p
+
+        option '-p' get and apply php from php.new
+
+
+    "
+}
+
+if [ $1 == '--help' ] || [ $1 == '-v' ] ; then
+
+    help_print
+    exit 0
+
+fi
+
+if [ "$user" == "root" ] ; then
+    case $2 in
+        "fpm") 
+            # ++++++++++++++++++++++++++++++++++++++++++++++
+                case $1 in
+                "php81") change_link "$cmdphp81" ; change_fpm_link "$cmdphp81fpm"; /usr/bin/php --version;/usr/bin/php-fpm --version ;; #Se foi informado a opção 1 então realiza o echo, no caso o parâmetro é numero
+                "php82") change_link "$cmdphp82" ; change_fpm_link "$cmdphp82fpm"; /usr/bin/php --version;/usr/bin/php-fpm --version ;; # Podendo ser texto
+                "php83") change_link "$cmdphp83" ; change_fpm_link "$cmdphp83fpm"; /usr/bin/php --version;/usr/bin/php-fpm --version ;; # Podendo ser texto
+                "php84") change_link "$cmdphp84" ; change_fpm_link "$cmdphp84fpm"; /usr/bin/php --version;/usr/bin/php-fpm --version ;; # Podendo ser texto
+                "php85") change_link "$cmdphp85" ; change_fpm_link "$cmdphp85fpm"; /usr/bin/php --version;/usr/bin/php-fpm --version ;; # Podendo ser texto
+                *) 
+                    local_error "Invalid option! :-(" 
+                    help_print
+                ;; # Algo que não se enquadre acima
+                esac
+            # ++++++++++++++++++++++++++++++++++++++++++++++
+        ;;
+        "-p")
+            case $1 in
+                "php81")  install_herd "8.1" ;   change_link "$HERDLINK"; /usr/bin/php --version ;; #Se foi informado a opção 1 então realiza o echo, no caso o parâmetro é numero
+                "php82")  install_herd "8.2" ;  change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
+                "php83")  install_herd "8.3" ;  change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
+                "php84")  install_herd "8.4" ;  change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
+                "php85")  install_herd "8.5" ;  change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
+                "php")    install_herd " " ;  change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
+                *) local_error "
+                Invalid option! :-( \n" 
+                help_print
+                ;; # Algo que não se enquadre acima
+            esac
+
+        ;;
+        *)
+            case $1 in
+                "php81") change_link "$cmdphp81"; /usr/bin/php --version ;; #Se foi informado a opção 1 então realiza o echo, no caso o parâmetro é numero
+                "php82") change_link "$cmdphp82"; /usr/bin/php --version ;; # Podendo ser texto
+                "php83") change_link "$cmdphp83"; /usr/bin/php --version ;; # Podendo ser texto
+                "php84") change_link "$cmdphp84"; /usr/bin/php --version ;; # Podendo ser texto
+                "php85") change_link "$cmdphp85"; /usr/bin/php --version ;; # Podendo ser texto
+                "php") change_link "$cmdphp85"; /usr/bin/php --version ;; # Podendo ser texto
+                *) local_error "
+                Invalid option! :-( \n" 
+                help_print
+                ;; # Algo que não se enquadre acima
+            esac
+    esac
+else
+    case $2 in
+        "-p")
+            case $1 in
+                "php81")  install_herd "8.1"   ;     change_link "$HERDLINK"; /usr/bin/php --version ;; #Se foi informado a opção 1 então realiza o echo, no caso o parâmetro é numero
+                "php82")  install_herd "8.2"   ;     change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
+                "php83")  install_herd "8.3"   ;     change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
+                "php84")  install_herd "8.4"   ;     change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
+                "php85")  install_herd "8.5"   ;     change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
+                "php")    install_herd "8.5"      ;     change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
+                *) local_error "
+                Invalid option! :-(" 
+                help_print
+                ;; # Algo que não se enquadre acima
+            esac
+
+        ;;
+        *)
+            printf "\n"
+            local_error " This comand need root privileges. :-( 
+              when try change synbolic link in system path /usr/bin \n
+              need root privileges to make it.  
+            \n
+                
+                "
+                help_print
+        ;;
+    esac
+fi
+exit 0
+        
+        
+

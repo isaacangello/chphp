@@ -1,0 +1,81 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# Define variables
+BASE_URL="https://download.herdphp.com"
+INSTALL_DIR="$HOME/.config/herd-lite/bin"
+PHP_BIN="$INSTALL_DIR/php"
+COMPOSER_BIN="$INSTALL_DIR/composer"
+LARAVEL_BIN="$INSTALL_DIR/laravel"
+
+# Create the directory if it doesn't exist
+mkdir -p "$INSTALL_DIR"
+
+# Helper functions
+show_spinner() {
+  local pid=$1
+  local delay=0.1
+  local spinstr='|/-\'
+  local i=0
+
+  while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
+    # Get the current character for the spinner
+    printf "\b%c" "${spinstr:i++%${#spinstr}:1}"
+    sleep $delay
+  done
+
+  # Clear the spinner once the process is complete
+  printf "\b \b \n"
+}
+
+
+download_with_spinner() {
+  local url=$1
+  local output_file=$2
+
+  # Start curl in the background, suppressing all output and errors
+  curl -L "$url" -o "$output_file" > /dev/null 2>&1 &
+
+
+  # Capture the PID of curl
+  local curl_pid=$!
+
+  # Show the spinner while curl is running
+  show_spinner $curl_pid
+
+  # Wait for curl to complete
+  wait $curl_pid
+
+  # Check if the download was successful
+  if [ $? -eq 0 ]; then
+    #success "File downloaded successfully to $output_file."
+    chmod +x "$output_file"
+  else
+    error "Failed to download file from $url."
+    exit 1
+  fi
+}
+
+info() {
+    local blue_bg="\033[44m"
+    local white_text="\033[97m"
+    local reset="\033[0m"
+    printf " ${blue_bg}${white_text} INFO ${reset} $1"
+}
+
+success() {
+    local green_bg="\033[42m"
+    local black_text="\033[30m"
+    local reset="\033[0m"
+    printf " ${green_bg}${black_text} SUCCESS ${reset} $1 \n"
+}
+
+error() {
+    local red_bg="\033[41m"
+    local white_text="\033[97m"
+    local reset="\033[0m"
+    printf " ${red_bg}${white_text} ERROR ${reset} $1 \n"
+}
+
+clear
