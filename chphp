@@ -150,6 +150,7 @@ declare -A php_urls=(
         )\
 
 install_php(){
+  clear
 local_info "Downloading PHP binary…  "
 if [ "$(uname -m)" = "x86_64" ]; then
   download_with_spinner "${php_urls[x86_64,$1]}" "$PHP_BIN"
@@ -217,6 +218,7 @@ install_herd(){
          "
         exit 1
     fi
+    adjust_path
 
 }
 
