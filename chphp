@@ -221,21 +221,29 @@ install_herd(){
 }
 
 help_print(){
-    local_help "sintaxe/
+    local_help "
     -------
         chphp  This script change a php version in path 
         ______________________
-        php.version_|_option 
-        php(current)| null | -p  
-        php81_______| null | -p
-        php82_______| null | -p
-        php83_______| null | -p
-        php83_______| null | -p
-        php84_______| null | -p
-        php85_______| null | -p
+        sintaxe
+        chphp [php.version] [option]     
 
-        option '-p' get and apply php from php.new
+        |php.versions avaliable |_option_______|  
+        |-----------------------| -------------|
+        |php(current)-----------|__________-p__|
+        | php81-----------------|______________|
+        | php82-----------------|______________|
+        | php83-----------------|__________-p__|
+        | php84-----------------|__________-p__|
+        | php85-----------------|__________-p__|
+        | php-fpm81-------------|______________|
+        | php-fpm82-------------|______________|
+        | php-fpm83-------------|______________|
+        | php-fpm84-------------|______________|
+        | php-fpm85-------------|______________|
 
+        option '-p' get and install php from php.new
+        obs: because php.new not have a php fpm version, not suport -p flag   
 
     "
 }
