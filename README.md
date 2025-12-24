@@ -1,5 +1,60 @@
 # chphp
 
+This is a small tool for managing multiple PHP installations installed via AUR on an Arch Linux-based system, or you can install via php.new.
+## Installation
+
+Clone this repository somewhere on your system. 
+
+
+```bash
+git clone https://github.com/isaacangello/chphp.git
+
+```
+ 
+
+## Usage
+
+Enter the folder and run the script from there, or if you prefer, copy it to an executable folder.
+
+```bash
+cd chphp && ./chphp php83 -p
+```
+
+## Command options and flags
+
+
+sintaxe
+chphp [php.version] [option]     
+
+
+|php.versions avaliable | option|  
+|------------- | -------------|
+|php(current) |   -p  |
+| php81 |    |
+| php82 |   |
+| php83 |  -p |
+| php84 |  -p |
+| php85 |  -p  |
+| php-fpm81 |    |
+| php-fpm82 |   |
+| php-fpm83 |   |
+| php-fpm84 |   |
+| php-fpm85 |    |
+
+
+option '-p' get and install php from php.new
+
+### obs: 
+because php.new not have a php fpm version, not suport -p flag   
+
+## License
+
+[MIT](https://choosealicense.com/licenses/mit/)
+
+Português
+
+# chphp
+
 Essa é uma pequena ferramenta para gerenciar múltiplas instalações do PHP instaladas via AUR em um sistema baseado em archlinux, ou você pode instalar via php.new. 
 
 ## Installation
@@ -25,20 +80,28 @@ cd chphp && ./chphp php83 -p
 
 
 sintaxe
-    
-chphp  This script change a php version in path 
+chphp [php.version] [option]     
 
-|php.version | option| |
-|------------- | -------------|-------------  |
-|php(current) | null | -p  |
-| php81_______ | null | -p  |
-| php82_______ | null | -p |
-| php83_______ | null | -p |
-| php83_______ | null | -p |
-| php84_______ | null | -p |
-|php85_______ | null | -p  |
 
-option '-p' get and apply php from php.new
+|php.versions avaliable | option|  
+|------------- | -------------|
+|php(current) |   -p  |
+| php81 |    |
+| php82 |   |
+| php83 |  -p |
+| php84 |  -p |
+| php85 |  -p  |
+| php-fpm81 |    |
+| php-fpm82 |   |
+| php-fpm83 |   |
+| php-fpm84 |   |
+| php-fpm85 |    |
+
+
+option '-p' get and install php from php.new
+
+### obs: 
+because php.new not have a php fpm version, not suport -p flag   
 
 ## License
 
