@@ -48,6 +48,11 @@ local_error() {
     printf " ${red_bg}${white_text} ERROR ${reset} $1 \n"
 }
 
+invalid_option(){
+      local_error "Invalid option! :-(" 
+    help_print
+
+}
 adjust_path(){
 
 local_info "Adjust path ... \n"
@@ -268,8 +273,6 @@ if [ "$user" == "root" ] ; then
                 "php84") change_link "$cmdphp84" ; change_fpm_link "$cmdphp84fpm"; /usr/bin/php --version;/usr/bin/php-fpm --version ;; # Podendo ser texto
                 "php85") change_link "$cmdphp85" ; change_fpm_link "$cmdphp85fpm"; /usr/bin/php --version;/usr/bin/php-fpm --version ;; # Podendo ser texto
                 *) 
-                    local_error "Invalid option! :-(" 
-                    help_print
                 ;; # Algo que não se enquadre acima
                 esac
             # ++++++++++++++++++++++++++++++++++++++++++++++
@@ -282,10 +285,7 @@ if [ "$user" == "root" ] ; then
                 "php84")  install_herd "8.4" ;  change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
                 "php85")  install_herd "8.5" ;  change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
                 "php")    install_herd " " ;  change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
-                *) local_error "
-                Invalid option! :-( \n" 
-                help_print
-                ;; # Algo que não se enquadre acima
+                *) invalid_option ;; # Algo que não se enquadre acima
             esac
 
         ;;
@@ -297,10 +297,7 @@ if [ "$user" == "root" ] ; then
                 "php84") change_link "$cmdphp84"; /usr/bin/php --version ;; # Podendo ser texto
                 "php85") change_link "$cmdphp85"; /usr/bin/php --version ;; # Podendo ser texto
                 "php") change_link "$cmdphp85"; /usr/bin/php --version ;; # Podendo ser texto
-                *) local_error "
-                Invalid option! :-( \n" 
-                help_print
-                ;; # Algo que não se enquadre acima
+                *) invalid_option ;; # Algo que não se enquadre acima
             esac
     esac
 else
@@ -313,10 +310,7 @@ else
                 "php84")  install_herd "8.4"   ;     change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
                 "php85")  install_herd "8.5"   ;     change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
                 "php")    install_herd "8.5"      ;     change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
-                *) local_error "
-                Invalid option! :-(" 
-                help_print
-                ;; # Algo que não se enquadre acima
+                *) invalid_option ;; # Algo que não se enquadre acima # Algo que não se enquadre acima
             esac
 
         ;;

@@ -3,7 +3,7 @@
 This is a small tool for managing multiple PHP installations installed via AUR on an Arch Linux-based system, or you can install via php.new.
 ## Installation
 
-Clone this repository somewhere on your system. 
+Clone this repository somewhere on your system.
 
 
 ```bash
