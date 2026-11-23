@@ -30,8 +30,8 @@ chphp [php.version] [option]
 |php.versions avaliable | option|  
 |------------- | -------------|
 |php(current) |   -p  |
-| php81 |    |
-| php82 |   |
+| php81 |  -p |
+| php82 |  -p |
 | php83 |  -p |
 | php84 |  -p |
 | php85 |  -p  |
@@ -47,9 +47,13 @@ option '-p' get and install php from php.new
 ### obs: 
 because php.new not have a php fpm version, not suport -p flag   
 
+## Versioning
+
+Releases follow Semantic Versioning (`vMAJOR.MINOR.PATCH`). See [Releases](https://github.com/isaacangello/chphp/releases).
+
 ## License
 
-[MIT](https://choosealicense.com/licenses/mit/)
+[MIT](LICENSE)
 
 Português
 
@@ -86,8 +90,8 @@ chphp [php.version] [option]
 |php.versions avaliable | option|  
 |------------- | -------------|
 |php(current) |   -p  |
-| php81 |    |
-| php82 |   |
+| php81 |  -p |
+| php82 |  -p |
 | php83 |  -p |
 | php84 |  -p |
 | php85 |  -p  |
@@ -103,6 +107,10 @@ option '-p' get and install php from php.new
 ### obs: 
 because php.new not have a php fpm version, not suport -p flag   
 
-## License
+## Versionamento
 
-[MIT](https://choosealicense.com/licenses/mit/)
+As releases seguem Semantic Versioning (`vMAJOR.MINOR.PATCH`). Veja [Releases](https://github.com/isaacangello/chphp/releases).
+
+## Licença
+
+[MIT](LICENSE)

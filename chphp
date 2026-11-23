@@ -12,41 +12,50 @@ cmdphp83fpm="/usr/bin/php-fpm83"
 cmdphp84fpm="/usr/bin/php-fpm84"
 cmdphp85fpm="/usr/bin/php-fpm85"
 HERDLINK=$HOME"/.config/herd-lite/bin/php"
-tmpdir="./tmp"
-url=" https://php.new/install/linux/"
 user=$(whoami)
+
+BASE_URL="https://download.herdphp.com"
+INSTALL_DIR="$HOME/.config/herd-lite/bin"
+PHP_BIN="$INSTALL_DIR/php"
+COMPOSER_BIN="$INSTALL_DIR/composer"
+LARAVEL_BIN="$INSTALL_DIR/laravel"
 local_info() {
     local blue_bg="\033[44m"
     local white_text="\033[97m"
     local reset="\033[0m"
-    printf " ${blue_bg}${white_text} INFO ${reset} $1"
+    printf " ${blue_bg}${white_text} INFO ${reset} %b" "$1"
 }
 local_question() {
     local blue_bg="\033[44m"
     local white_text="\033[97m"
     local reset="\033[0m"
-    printf " ${blue_bg}${white_text} question ? ${reset} $1"
+    printf " ${blue_bg}${white_text} question ? ${reset} %b" "$1"
 }
 local_help() {
     local blue_bg="\033[44m"
     local white_text="\033[97m"
     local reset="\033[0m"
-    printf " ${blue_bg}${white_text} HELP ${reset} $1"
+    printf " ${blue_bg}${white_text} HELP ${reset} %b" "$1"
 }
 
 local_success() {
     local green_bg="\033[42m"
     local black_text="\033[30m"
     local reset="\033[0m"
-    printf " ${green_bg}${black_text} SUCCESS ${reset} $1 \n"
+    printf " ${green_bg}${black_text} SUCCESS ${reset} %b\n" "$1"
 }
 
 local_error() {
     local red_bg="\033[41m"
     local white_text="\033[97m"
     local reset="\033[0m"
-    printf " ${red_bg}${white_text} ERROR ${reset} $1 \n"
+    printf " ${red_bg}${white_text} ERROR ${reset} %b\n" "$1"
 }
+
+# Compatibilidade com as funções usadas pelos comandos de instalação.
+info(){ local_info "$@"; }
+success(){ local_success "$@"; }
+error(){ local_error "$@"; }
 
 invalid_option(){
       local_error "Invalid option! :-(" 
@@ -102,129 +111,175 @@ fi
 
 change_link(){
     local_success "Change php link in path \n"
-    if [ "$user" == "root" ] ; then    
-        rm -rf /usr/bin/php
-        ln  -sT  $1 /usr/bin/php 
-        else
-        sudo rm -rf /usr/bin/php
-        sudo ln  -sT  $1 /usr/bin/php 
+    if [ "$user" = "root" ] ; then
+        rm -f /usr/bin/php
+        ln -sT "$1" /usr/bin/php
+    else
+        sudo rm -f /usr/bin/php
+        sudo ln -sT "$1" /usr/bin/php
     fi
-
 }
 
 change_fpm_link(){
     local_success "Change php-fpm link in path \n"
-    rm -rf /usr/bin/php-fpm
-    ln  -sT  $1 /usr/bin/php-fpm
+    if [ "$user" = "root" ] ; then
+        rm -f /usr/bin/php-fpm
+        ln -sT "$1" /usr/bin/php-fpm
+    else
+        sudo rm -f /usr/bin/php-fpm
+        sudo ln -sT "$1" /usr/bin/php-fpm
+    fi
 }
 
+show_spinner() {
+  local pid=$1
+  local delay=0.1
+  local spinstr=$'|/-\\'
+  local i=0
+
+  while kill -0 "$pid" 2>/dev/null; do
+    printf "\b%c" "${spinstr:i++%${#spinstr}:1}"
+    sleep "$delay"
+  done
+
+  printf "\b \b\n"
+}
+
+# Baixa para um arquivo temporário no mesmo diretório e só depois substitui o
+# destino. Isso evita "Text file busy" quando o binário está em execução e
+# preserva a versão antiga se o download falhar.
 download_with_spinner() {
   local url=$1
   local output_file=$2
+  local tmp_file="${output_file}.part.$$"
+  local curl_pid
 
-  # Start curl in the background, suppressing all output and errors
-  curl -L "$url" -o "$output_file" > /dev/null 2>&1 &
+  if [ -z "$url" ] || [ -z "$output_file" ]; then
+    error "URL ou arquivo de destino vazio."
+    return 1
+  fi
 
+  mkdir -p "$(dirname "$output_file")" || return 1
+  rm -f "$tmp_file"
 
-  # Capture the PID of curl
-  local curl_pid=$!
+  curl -fL --silent --show-error --connect-timeout 15 --retry 2 \
+    "$url" -o "$tmp_file" &
+  curl_pid=$!
 
-  # Show the spinner while curl is running
-  show_spinner $curl_pid
+  show_spinner "$curl_pid"
 
-  # Wait for curl to complete
-  wait $curl_pid
+  if ! wait "$curl_pid"; then
+    error "Falha ao baixar $url."
+    rm -f "$tmp_file"
+    return 1
+  fi
 
-  # Check if the download was successful
-  if [ $? -eq 0 ]; then
-    #success "File downloaded successfully to $output_file."
-    chmod +x "$output_file"
-  else
-    error "Failed to download file from $url."
-    exit 1
+  if [ ! -s "$tmp_file" ]; then
+    error "Arquivo vazio baixado de $url."
+    rm -f "$tmp_file"
+    return 1
+  fi
+
+  if ! chmod +x "$tmp_file"; then
+    error "Falha ao definir permissões em $tmp_file."
+    rm -f "$tmp_file"
+    return 1
+  fi
+
+  if ! mv -f "$tmp_file" "$output_file"; then
+    error "Falha ao substituir $output_file."
+    rm -f "$tmp_file"
+    return 1
   fi
 }
-BASE_URL="https://download.herdphp.com"
 declare -A php_urls=(
-    ["x86_64,8.3"]="$BASE_URL/herd-lite/linux/x64/php"        \
-    ["x86_64,8.4"]="$BASE_URL/herd-lite/linux/x64/8.4/php"    \
-    ["x86_64,8.5"]="$BASE_URL/herd-lite/linux/x64/8.5/php"    \
-    ["arm64,8.3"]="$BASE_URL/herd-lite/linux/arm64/php"       \ 
-    ["arm64,8.4"]="$BASE_URL/herd-lite/linux/arm64/8.4/php"   \
-    ["arm64,8.5"]="$BASE_URL/herd-lite/linux/arm64/8.5/php"   \
-        )\
+    ["x86_64,8.1"]="$BASE_URL/herd-lite/linux/x64/php"
+    ["x86_64,8.2"]="$BASE_URL/herd-lite/linux/x64/php"
+    ["x86_64,8.3"]="$BASE_URL/herd-lite/linux/x64/php"
+    ["x86_64,8.4"]="$BASE_URL/herd-lite/linux/x64/8.4/php"
+    ["x86_64,8.5"]="$BASE_URL/herd-lite/linux/x64/8.5/php"
+    ["arm64,8.1"]="$BASE_URL/herd-lite/linux/arm64/php"
+    ["arm64,8.2"]="$BASE_URL/herd-lite/linux/arm64/php"
+    ["arm64,8.3"]="$BASE_URL/herd-lite/linux/arm64/php"
+    ["arm64,8.4"]="$BASE_URL/herd-lite/linux/arm64/8.4/php"
+    ["arm64,8.5"]="$BASE_URL/herd-lite/linux/arm64/8.5/php"
+)
+
+php_url_for_version(){
+  local version=$1
+  local arch
+
+  case "$(uname -m)" in
+    x86_64|amd64) arch="x86_64" ;;
+    aarch64|arm64) arch="arm64" ;;
+    *)
+      error "Arquitetura não suportada: $(uname -m)."
+      return 1
+      ;;
+  esac
+
+  local php_url="${php_urls["$arch,$version"]:-}"
+  if [ -z "$php_url" ]; then
+    error "Versão do PHP não suportada: $version."
+    return 1
+  fi
+
+  printf '%s' "$php_url"
+}
 
 install_php(){
-  clear
-local_info "Downloading PHP binary…  "
-if [ "$(uname -m)" = "x86_64" ]; then
-  download_with_spinner "${php_urls[x86_64,$1]}" "$PHP_BIN"
-else
-  download_with_spinner "${php_urls[arm64,$1]}" "$PHP_BIN"
-fi
+  local version=$1
+  local php_url
 
-info "Downloading cacert.pem…  "
-download_with_spinner "https://curl.se/ca/cacert.pem" "$INSTALL_DIR/cacert.pem"
+  php_url=$(php_url_for_version "$version") || return 1
 
-if [ ! -f "$INSTALL_DIR/php.ini" ]; then
-  touch "$INSTALL_DIR/php.ini"
+  local_info "Downloading PHP $version binary…  \n"
+  download_with_spinner "$php_url" "$PHP_BIN" || return 1
 
-  echo "curl.cainfo=$INSTALL_DIR/cacert.pem" >> "$INSTALL_DIR/php.ini"
-  echo "openssl.cafile=$INSTALL_DIR/cacert.pem" >> "$INSTALL_DIR/php.ini"
-  echo "pcre.jit=0" >> "$INSTALL_DIR/php.ini"
-fi
+  info "Downloading cacert.pem…  "
+  download_with_spinner "https://curl.se/ca/cacert.pem" "$INSTALL_DIR/cacert.pem" || return 1
 
+  if [ ! -f "$INSTALL_DIR/php.ini" ]; then
+    touch "$INSTALL_DIR/php.ini" || return 1
 
+    {
+      echo "curl.cainfo=$INSTALL_DIR/cacert.pem"
+      echo "openssl.cafile=$INSTALL_DIR/cacert.pem"
+      echo "pcre.jit=0"
+    } >> "$INSTALL_DIR/php.ini"
+  fi
 }
 
 install_composer(){
-local_info "Downloading Composer binary…  "
-download_with_spinner "$BASE_URL/herd-lite/composer" "$COMPOSER_BIN"
-
+  local_info "Downloading Composer binary…  "
+  download_with_spinner "$BASE_URL/herd-lite/composer" "$COMPOSER_BIN"
 }
 
 install_laravel(){
-info "Downloading Laravel Installer…  "
-download_with_spinner "$BASE_URL/resources/laravel" "$LARAVEL_BIN"
-
+  info "Downloading Laravel Installer…  "
+  download_with_spinner "$BASE_URL/resources/laravel" "$LARAVEL_BIN"
 }
 
 install_herd(){
-    local_info "Downloading installer file...\n\n"
-    if [ -d $tmpdir ] ;  then
-    rm -Rf $tmpdir
-        mkdir $tmpdir
-        wget -O $tmpdir/install_herd_"$1".sh  $url$1/ @
-        else
-        mkdir $tmpdir
-        wget -O $tmpdir/install_herd_"$1".sh  $url$1/
-    fi
-    if [ -f $tmpdir/install_herd_source ] ; then rm -f $tmpdir/install_herd_source ; fi
-    sed -n '1,/clear/p' $tmpdir/install_herd_"$1".sh > $tmpdir/install_herd_source
-    sed -i 's/clear//g' $tmpdir/install_herd_source
-    if [ -f $tmpdir/install_herd_source ] ; then
-        #   local_info "Install PHP $1 \n\n"
-        source $tmpdir/install_herd_source
-          # shellcheck disable=SC1090
-          
-          install_php "$1" 
-          success "Great Job !!!! \n"
-          local_question " you wish install composer and laravel installer ?\n"
-          read resp
-          if [ "$resp" = "s" ] || [ "$resp" = "S" ] || [ "$resp" = "y" ] || [ "$resp" = "Y" ] ; then
-                install_composer
-                install_laravel
-          fi
-    else
-         local_error "
-            you have a problem !!!
-            file is not found.
-            bye :-(  
-         "
-        exit 1
-    fi
-    adjust_path
+  local version=$1
+  local resp
 
+  if ! mkdir -p "$INSTALL_DIR"; then
+    error "Não foi possível criar $INSTALL_DIR."
+    exit 1
+  fi
+
+  install_php "$version" || exit 1
+
+  success "Great Job !!!! \n"
+  local_question " you wish install composer and laravel installer ?\n"
+  read -r resp
+  if [ "$resp" = "s" ] || [ "$resp" = "S" ] || [ "$resp" = "y" ] || [ "$resp" = "Y" ]; then
+    install_composer || exit 1
+    install_laravel || exit 1
+  fi
+
+  adjust_path
 }
 
 help_print(){
@@ -238,8 +293,8 @@ help_print(){
         |php.versions avaliable |_option_______|  
         |-----------------------| -------------|
         |php(current)-----------|__________-p__|
-        | php81-----------------|______________|
-        | php82-----------------|______________|
+        | php81-----------------|__________-p__|
+        | php82-----------------|__________-p__|
         | php83-----------------|__________-p__|
         | php84-----------------|__________-p__|
         | php85-----------------|__________-p__|
@@ -255,7 +310,7 @@ help_print(){
     "
 }
 
-if [ $1 == '--help' ] || [ $1 == '-v' ] ; then
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-v" ]; then
 
     help_print
     exit 0
@@ -284,7 +339,7 @@ if [ "$user" == "root" ] ; then
                 "php83")  install_herd "8.3" ;  change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
                 "php84")  install_herd "8.4" ;  change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
                 "php85")  install_herd "8.5" ;  change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
-                "php")    install_herd " " ;  change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
+                "php")    install_herd "8.5" ;  change_link "$HERDLINK"; /usr/bin/php --version ;; # Podendo ser texto
                 *) invalid_option ;; # Algo que não se enquadre acima
             esac
 
