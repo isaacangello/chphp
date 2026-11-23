@@ -14,6 +14,8 @@ cmdphp85fpm="/usr/bin/php-fpm85"
 HERDLINK=$HOME"/.config/herd-lite/bin/php"
 user=$(whoami)
 
+VERSION="0.1.1"
+
 BASE_URL="https://download.herdphp.com"
 INSTALL_DIR="$HOME/.config/herd-lite/bin"
 PHP_BIN="$INSTALL_DIR/php"
@@ -282,6 +284,10 @@ install_herd(){
   adjust_path
 }
 
+version_print(){
+    printf 'chphp %s\n' "$VERSION"
+}
+
 help_print(){
     local_help "
     -------
@@ -305,16 +311,21 @@ help_print(){
         | php-fpm85-------------|______________|
 
         option '-p' get and install php from php.new
+        -v, --version show the installed version
+        -h, --help    show this help
         obs: because php.new not have a php fpm version, not suport -p flag   
 
     "
 }
 
-if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-v" ]; then
-
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
     help_print
     exit 0
+fi
 
+if [ "${1:-}" = "-v" ] || [ "${1:-}" = "--version" ]; then
+    version_print
+    exit 0
 fi
 
 if [ "$user" == "root" ] ; then

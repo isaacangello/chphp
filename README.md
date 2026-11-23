@@ -20,6 +20,12 @@ Enter the folder and run the script from there, or if you prefer, copy it to an 
 cd chphp && ./chphp php83 -p
 ```
 
+Check the installed version with:
+
+```bash
+chphp -v
+```
+
 ## Command options and flags
 
 
@@ -78,6 +84,12 @@ Entre na pasta e execute o script a partir dela, ou se preferir copie para uma p
 
 ```bash
 cd chphp && ./chphp php83 -p
+```
+
+Confira a versão instalada com:
+
+```bash
+chphp -v
 ```
 
 ## opções e flags do comando 
